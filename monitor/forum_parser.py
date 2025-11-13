@@ -41,12 +41,14 @@ class ForumThreadParser:
                 post_id = data_content
 
         post_number = None
-        post_number_elem = post_elem.find('a', href=re.compile(r'#post-\d+'))
-        if post_number_elem:
-            number_text = post_number_elem.get_text(strip=True)
-            number_match = re.search(r'#(\d+)', number_text)
-            if number_match:
-                post_number = int(number_match.group(1))
+        post_number_elems = post_elem.find_all('a', href=re.compile(r'#post-\d+'))
+        for elem in post_number_elems:
+            number_text = elem.get_text(strip=True)
+            if '#' in number_text:
+                number_match = re.search(r'#(\d+)', number_text)
+                if number_match:
+                    post_number = int(number_match.group(1))
+                    break
 
         author = None
         author_elem = post_elem.find('a', class_=re.compile(r'username'))

@@ -121,11 +121,12 @@ class DatabaseClient:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(
                     """
-                    INSERT INTO page_states (url, monitoring_type, last_post_number, last_post_id, metadata, last_checked)
-                    VALUES (%s, 'forum_thread', %s, %s, %s, NOW())
+                    INSERT INTO page_states (url, monitoring_type, content_hash, last_post_number, last_post_id, metadata, last_checked)
+                    VALUES (%s, 'forum_thread', '', %s, %s, %s, NOW())
                     ON CONFLICT (url)
                     DO UPDATE SET
                         monitoring_type = 'forum_thread',
+                        content_hash = '',
                         last_post_number = EXCLUDED.last_post_number,
                         last_post_id = EXCLUDED.last_post_id,
                         metadata = EXCLUDED.metadata,
