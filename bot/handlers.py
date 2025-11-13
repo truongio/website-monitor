@@ -1,9 +1,11 @@
 from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler
 from database import DatabaseClient
+from dotenv import load_dotenv
 import re
 
 
+load_dotenv()
 db = DatabaseClient()
 
 
