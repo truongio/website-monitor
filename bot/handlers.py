@@ -24,20 +24,22 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_message = """
 🔍 *Website Monitor Bot*
 
-I'll help you monitor websites for changes and notify you when something updates!
+I'll help you monitor websites and forum threads for changes and notify you when something updates!
 
 *Available Commands:*
-/subscribe <url> - Subscribe to a URL
+/subscribe <url> - Subscribe to a URL or forum thread
 /unsubscribe <url> - Unsubscribe from a URL
 /list - Show your subscriptions
 /pause <url> - Pause monitoring a URL
 /resume <url> - Resume monitoring a URL
 /help - Show this help message
 
-*Example:*
-`/subscribe https://example.com/news`
+*Examples:*
+`/subscribe https://example.com/news` - Monitor page changes
+`/subscribe https://forum.com/thread/123` - Monitor new forum posts
 
-I'll check your subscribed pages periodically and send you a message when they change!
+For regular pages, I'll notify you when content changes.
+For forum threads, I'll notify you only about NEW POSTS with author, content, and link!
     """
     await update.message.reply_text(welcome_message, parse_mode='Markdown')
 

@@ -10,7 +10,7 @@ from collections import defaultdict
 load_dotenv()
 
 
-async def send_notification(bot: Bot, chat_id: int, url: str, snippet: str):
+async def send_page_notification(bot: Bot, chat_id: int, url: str, snippet: str):
     message = (
         f"🔔 *Page Changed!*\n\n"
         f"URL: `{url}`\n\n"
@@ -20,9 +20,45 @@ async def send_notification(bot: Bot, chat_id: int, url: str, snippet: str):
         await bot.send_message(
             chat_id=chat_id,
             text=message,
-            parse_mode='Markdown'
+            parse_mode='Markdown',
+            disable_web_page_preview=True
         )
-        print(f"Sent notification to chat [{chat_id}] for [{url}]")
+        print(f"Sent page notification to chat [{chat_id}] for [{url}]")
+    except Exception as e:
+        print(f"Failed to send notification to chat [{chat_id}]: {e}")
+
+
+async def send_forum_notification(bot: Bot, chat_id: int, url: str, new_posts: list):
+    if not new_posts:
+        return
+
+    message = f"🆕 *New Forum Post{'s' if len(new_posts) > 1 else ''}!*\n\n"
+
+    for post in new_posts[:5]:
+        author = post.get('author', 'Unknown')
+        post_number = post.get('post_number', '?')
+        content = post.get('content', '')
+        permalink = post.get('permalink', url)
+
+        content_preview = content[:200] if content else 'No content'
+        if len(content) > 200:
+            content_preview += '...'
+
+        message += f"*{author}* (#{post_number})\n"
+        message += f"{content_preview}\n"
+        message += f"[View Post]({permalink})\n\n"
+
+    if len(new_posts) > 5:
+        message += f"_...and {len(new_posts) - 5} more post(s)_\n"
+
+    try:
+        await bot.send_message(
+            chat_id=chat_id,
+            text=message,
+            parse_mode='Markdown',
+            disable_web_page_preview=True
+        )
+        print(f"Sent forum notification to chat [{chat_id}] for [{url}] ({len(new_posts)} new posts)")
     except Exception as e:
         print(f"Failed to send notification to chat [{chat_id}]: {e}")
 
@@ -53,32 +89,57 @@ async def monitor_pages():
         print(f"Checking [{url}]...")
 
         previous_state = db.get_page_state(url)
-        previous_hash = previous_state['content_hash'] if previous_state else None
 
-        result = checker.check_page(url, previous_hash)
+        result = checker.check_page(url, previous_state)
 
         if not result['success']:
             print(f"Failed to check [{url}]: {result.get('error')}")
             continue
 
-        db.update_page_state(
-            url,
-            result['content_hash'],
-            result['snippet']
-        )
+        monitoring_type = result.get('monitoring_type', 'page')
 
-        if result['changed']:
-            print(f"Change detected for [{url}]! Notifying {len(subs)} subscriber(s)...")
+        if monitoring_type == 'forum_thread':
+            highest_post_number = result.get('highest_post_number')
+            metadata = result.get('metadata', {})
 
-            for sub in subs:
-                await send_notification(
-                    bot,
-                    sub['chat_id'],
-                    url,
-                    result['snippet']
-                )
+            db.update_forum_thread_state(
+                url,
+                highest_post_number,
+                metadata=metadata
+            )
+
+            if result['changed']:
+                new_posts = result.get('new_posts', [])
+                print(f"New posts detected for [{url}]! {len(new_posts)} new post(s). Notifying {len(subs)} subscriber(s)...")
+
+                for sub in subs:
+                    await send_forum_notification(
+                        bot,
+                        sub['chat_id'],
+                        url,
+                        new_posts
+                    )
+            else:
+                print(f"No new posts for [{url}]")
         else:
-            print(f"No change detected for [{url}]")
+            db.update_page_state(
+                url,
+                result['content_hash'],
+                result['snippet']
+            )
+
+            if result['changed']:
+                print(f"Change detected for [{url}]! Notifying {len(subs)} subscriber(s)...")
+
+                for sub in subs:
+                    await send_page_notification(
+                        bot,
+                        sub['chat_id'],
+                        url,
+                        result['snippet']
+                    )
+            else:
+                print(f"No change detected for [{url}]")
 
     print("Monitoring complete!")
 

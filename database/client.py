@@ -1,6 +1,7 @@
 import os
+import json
 import psycopg2
-from psycopg2.extras import RealDictCursor
+from psycopg2.extras import RealDictCursor, Json
 from typing import List, Dict, Optional
 from contextlib import contextmanager
 
@@ -112,3 +113,25 @@ class DatabaseClient:
                     (url,)
                 )
                 return [dict(row) for row in cur.fetchall()]
+
+    def update_forum_thread_state(self, url: str, last_post_number: int,
+                                   last_post_id: Optional[str] = None,
+                                   metadata: Optional[Dict] = None) -> Dict:
+        with self.get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    INSERT INTO page_states (url, monitoring_type, last_post_number, last_post_id, metadata, last_checked)
+                    VALUES (%s, 'forum_thread', %s, %s, %s, NOW())
+                    ON CONFLICT (url)
+                    DO UPDATE SET
+                        monitoring_type = 'forum_thread',
+                        last_post_number = EXCLUDED.last_post_number,
+                        last_post_id = EXCLUDED.last_post_id,
+                        metadata = EXCLUDED.metadata,
+                        last_checked = NOW()
+                    RETURNING *
+                    """,
+                    (url, last_post_number, last_post_id, Json(metadata) if metadata else None)
+                )
+                return dict(cur.fetchone())
