@@ -51,6 +51,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def subscribe_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+
     if not context.args or len(context.args) < 1:
         await update.message.reply_text(
             "❌ Please provide a URL to subscribe to.\n\n"
@@ -85,9 +88,10 @@ async def subscribe_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except Exception as e:
         print(f"Error subscribing to [{url}]: {e}")
-        await update.message.reply_text(
-            "❌ Failed to subscribe. Please try again later."
-        )
+        if update.message:
+            await update.message.reply_text(
+                "❌ Failed to subscribe. Please try again later."
+            )
 
 
 async def unsubscribe_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
