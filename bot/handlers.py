@@ -1,12 +1,14 @@
 from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler
 from database import DatabaseClient
+from monitor.url_classifier import URLClassifier
 from dotenv import load_dotenv
 import re
 
 
 load_dotenv()
 db = DatabaseClient()
+classifier = URLClassifier()
 
 
 def is_valid_url(url: str) -> bool:
@@ -69,9 +71,16 @@ async def subscribe_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         db.add_subscription(user_id, chat_id, url)
 
+        url_type = classifier.classify_url(url)
+
+        if url_type == 'forum_thread':
+            type_message = "🧵 *Detected as: Forum Thread*\nI'll notify you about NEW POSTS only (not existing ones)."
+        else:
+            type_message = "📄 *Detected as: Regular Page*\nI'll notify you when content changes."
+
         await update.message.reply_text(
             f"✅ Successfully subscribed to:\n`{url}`\n\n"
-            f"I'll notify you when this page changes!",
+            f"{type_message}",
             parse_mode='Markdown'
         )
     except Exception as e:
