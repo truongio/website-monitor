@@ -13,16 +13,16 @@ class ForumThreadParser:
         if not post_elements:
             post_elements = soup.find_all('li', class_=re.compile(r'message'))
 
+        current_page, total_pages = self._extract_pagination(soup)
+
         for post_elem in post_elements:
             try:
-                post_data = self._extract_post_data(post_elem, base_url)
+                post_data = self._extract_post_data(post_elem, base_url, current_page)
                 if post_data:
                     posts.append(post_data)
             except Exception as e:
                 print(f"Error parsing post: {e}")
                 continue
-
-        current_page, total_pages = self._extract_pagination(soup)
 
         thread_id = self._extract_thread_id(base_url)
 
@@ -33,7 +33,7 @@ class ForumThreadParser:
             'thread_id': thread_id
         }
 
-    def _extract_post_data(self, post_elem, base_url: str) -> Optional[Dict]:
+    def _extract_post_data(self, post_elem, base_url: str, current_page: int = 1) -> Optional[Dict]:
         post_id = post_elem.get('id')
         if not post_id:
             data_content = post_elem.get('data-content')
@@ -70,7 +70,7 @@ class ForumThreadParser:
             else:
                 timestamp = timestamp_elem.get_text(strip=True)
 
-        content_elem = post_elem.find('div', class_=re.compile(r'message-body|bbWrapper'))
+        content_elem = post_elem.find('div', class_=re.compile(r'messageContent|message-body|bbWrapper'))
         content = ''
         if content_elem:
             content = content_elem.get_text(separator=' ', strip=True)
@@ -78,7 +78,12 @@ class ForumThreadParser:
 
         permalink = None
         if post_id:
-            permalink = f"{base_url}#{post_id}"
+            base_url_clean = base_url.rstrip('/')
+            base_url_clean = re.sub(r'/page-\d+$', '', base_url_clean)
+            if current_page and current_page > 1:
+                permalink = f"{base_url_clean}/page-{current_page}#{post_id}"
+            else:
+                permalink = f"{base_url_clean}#{post_id}"
 
         if not post_id or not post_number:
             return None
