@@ -191,9 +191,33 @@ async def list_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message = "📋 *Your Subscriptions:*\n\n"
         for sub in subscriptions:
             status_emoji = "✅" if sub['status'] == 'active' else "⏸️"
-            message += f"{status_emoji} `{sub['url']}` ({sub['status']})\n"
 
-        message += f"\n*Total:* {len(subscriptions)} subscription(s)"
+            # Determine subscription type
+            url_type = classifier.classify_url(sub['url'])
+            selectors = sub.get('selectors')
+
+            if url_type == 'forum_thread':
+                type_icon = "🧵"
+                type_label = "Forum"
+            elif selectors:
+                type_icon = "🎯"
+                type_label = f"Targeted ({len(selectors)} selector{'s' if len(selectors) > 1 else ''})"
+            else:
+                type_icon = "📄"
+                type_label = "Page"
+
+            message += f"{status_emoji} {type_icon} *{type_label}*\n"
+            message += f"   `{sub['url']}`\n"
+
+            if selectors:
+                selector_preview = ', '.join([f"`{s}`" for s in selectors[:2]])
+                if len(selectors) > 2:
+                    selector_preview += f" +{len(selectors) - 2} more"
+                message += f"   Watching: {selector_preview}\n"
+
+            message += "\n"
+
+        message += f"*Total:* {len(subscriptions)} subscription(s)"
 
         await update.message.reply_text(message, parse_mode='Markdown')
     except Exception as e:
