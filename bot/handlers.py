@@ -30,6 +30,7 @@ I'll help you monitor websites and forum threads for changes and notify you when
 
 *Available Commands:*
 /subscribe <url> - Subscribe to a URL or forum thread
+/watch <url> <selector1> <selector2> ... - Monitor specific elements
 /unsubscribe <url> - Unsubscribe from a URL
 /list - Show your subscriptions
 /pause <url> - Pause monitoring a URL
@@ -37,10 +38,12 @@ I'll help you monitor websites and forum threads for changes and notify you when
 /help - Show this help message
 
 *Examples:*
-`/subscribe https://example.com/news` - Monitor page changes
+`/subscribe https://example.com/news` - Monitor entire page
+`/watch https://shop.com/product button.buy-button .price` - Monitor button & price only
 `/subscribe https://forum.com/thread/123` - Monitor new forum posts
 
 For regular pages, I'll notify you when content changes.
+For targeted monitoring with /watch, only specified elements are tracked (reduces false positives!).
 For forum threads, I'll notify you only about NEW POSTS with author, content, and link!
     """
     await update.message.reply_text(welcome_message, parse_mode='Markdown')
@@ -88,6 +91,52 @@ async def subscribe_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except Exception as e:
         print(f"Error subscribing to [{url}]: {e}")
+        if update.message:
+            await update.message.reply_text(
+                "❌ Failed to subscribe. Please try again later."
+            )
+
+
+async def watch_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+
+    if not context.args or len(context.args) < 2:
+        await update.message.reply_text(
+            "❌ Please provide a URL and at least one CSS selector.\n\n"
+            "Usage: `/watch https://example.com .button .price`\n\n"
+            "*Examples:*\n"
+            "`/watch https://shop.com/product button.checkout`\n"
+            "`/watch https://site.com .price .availability`\n\n"
+            "This will only monitor the specified elements, reducing false positives!",
+            parse_mode='Markdown'
+        )
+        return
+
+    url = context.args[0]
+    selectors = context.args[1:]
+
+    if not is_valid_url(url):
+        await update.message.reply_text("❌ Invalid URL. Please provide a valid HTTP/HTTPS URL.")
+        return
+
+    try:
+        user_id = update.effective_user.id
+        chat_id = update.effective_chat.id
+
+        db.add_subscription(user_id, chat_id, url, selectors)
+
+        selector_list = '\n'.join([f"  • `{s}`" for s in selectors])
+
+        await update.message.reply_text(
+            f"✅ Successfully subscribed with targeted monitoring:\n\n"
+            f"URL: `{url}`\n\n"
+            f"Monitoring these elements:\n{selector_list}\n\n"
+            f"🎯 *Targeted Mode*: I'll only notify you when these specific elements change!",
+            parse_mode='Markdown'
+        )
+    except Exception as e:
+        print(f"Error creating watch subscription for [{url}]: {e}")
         if update.message:
             await update.message.reply_text(
                 "❌ Failed to subscribe. Please try again later."
@@ -220,6 +269,7 @@ def setup_handlers(application):
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("subscribe", subscribe_command))
+    application.add_handler(CommandHandler("watch", watch_command))
     application.add_handler(CommandHandler("unsubscribe", unsubscribe_command))
     application.add_handler(CommandHandler("list", list_command))
     application.add_handler(CommandHandler("pause", pause_command))

@@ -90,6 +90,9 @@ async def monitor_pages():
 
         previous_state = db.get_page_state(url)
 
+        if previous_state and 'selectors' not in previous_state and subs:
+            previous_state['selectors'] = subs[0].get('selectors')
+
         result = checker.check_page(url, previous_state)
 
         if not result['success']:
@@ -122,10 +125,12 @@ async def monitor_pages():
             else:
                 print(f"No new posts for [{url}]")
         else:
+            selectors = result.get('selectors')
             db.update_page_state(
                 url,
                 result['content_hash'],
-                result['snippet']
+                result['snippet'],
+                selectors
             )
 
             if result['changed']:

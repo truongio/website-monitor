@@ -64,3 +64,24 @@ class ContentCleaner:
         cleaned_content = self.clean_content(html)
         content_hash = self.generate_hash(cleaned_content)
         return cleaned_content, content_hash
+
+    def process_html_with_selectors(self, html: str, selectors: list) -> tuple[str, str]:
+        soup = BeautifulSoup(html, 'lxml')
+
+        selected_texts = []
+
+        for selector in selectors:
+            elements = soup.select(selector)
+            for elem in elements:
+                for script_style in elem(['script', 'style', 'noscript']):
+                    script_style.decompose()
+
+                text = elem.get_text(separator=' ', strip=True)
+                text = re.sub(r'\s+', ' ', text).strip()
+                if text:
+                    selected_texts.append(text)
+
+        combined_text = ' | '.join(selected_texts)
+
+        content_hash = self.generate_hash(combined_text)
+        return combined_text, content_hash

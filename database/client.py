@@ -24,18 +24,18 @@ class DatabaseClient:
         finally:
             conn.close()
 
-    def add_subscription(self, user_id: int, chat_id: int, url: str) -> Dict:
+    def add_subscription(self, user_id: int, chat_id: int, url: str, selectors: Optional[List[str]] = None) -> Dict:
         with self.get_connection() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(
                     """
-                    INSERT INTO subscriptions (user_id, chat_id, url, status)
-                    VALUES (%s, %s, %s, 'active')
+                    INSERT INTO subscriptions (user_id, chat_id, url, status, selectors)
+                    VALUES (%s, %s, %s, 'active', %s)
                     ON CONFLICT (user_id, url)
-                    DO UPDATE SET status = 'active', updated_at = NOW()
+                    DO UPDATE SET status = 'active', selectors = EXCLUDED.selectors, updated_at = NOW()
                     RETURNING *
                     """,
-                    (user_id, chat_id, url)
+                    (user_id, chat_id, url, Json(selectors) if selectors else None)
                 )
                 return dict(cur.fetchone())
 
@@ -87,21 +87,22 @@ class DatabaseClient:
                 row = cur.fetchone()
                 return dict(row) if row else None
 
-    def update_page_state(self, url: str, content_hash: str, last_content: Optional[str] = None) -> Dict:
+    def update_page_state(self, url: str, content_hash: str, last_content: Optional[str] = None, selectors: Optional[List[str]] = None) -> Dict:
         with self.get_connection() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(
                     """
-                    INSERT INTO page_states (url, content_hash, last_content, last_checked)
-                    VALUES (%s, %s, %s, NOW())
+                    INSERT INTO page_states (url, content_hash, last_content, selectors, last_checked)
+                    VALUES (%s, %s, %s, %s, NOW())
                     ON CONFLICT (url)
                     DO UPDATE SET
                         content_hash = EXCLUDED.content_hash,
                         last_content = EXCLUDED.last_content,
+                        selectors = EXCLUDED.selectors,
                         last_checked = NOW()
                     RETURNING *
                     """,
-                    (url, content_hash, last_content)
+                    (url, content_hash, last_content, Json(selectors) if selectors else None)
                 )
                 return dict(cur.fetchone())
 

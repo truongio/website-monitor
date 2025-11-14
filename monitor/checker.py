@@ -39,6 +39,7 @@ class PageChecker:
 
     def _check_regular_page(self, url: str, previous_state: Optional[Dict] = None) -> Dict:
         previous_hash = previous_state.get('content_hash') if previous_state else None
+        selectors = previous_state.get('selectors') if previous_state else None
 
         html = self.fetch_page(url)
 
@@ -50,7 +51,10 @@ class PageChecker:
                 'monitoring_type': 'page'
             }
 
-        cleaned_content, content_hash = self.cleaner.process_html(html)
+        if selectors:
+            cleaned_content, content_hash = self.cleaner.process_html_with_selectors(html, selectors)
+        else:
+            cleaned_content, content_hash = self.cleaner.process_html(html)
 
         snippet = cleaned_content[:500] if cleaned_content else ''
 
@@ -63,7 +67,8 @@ class PageChecker:
             'content_hash': content_hash,
             'changed': changed,
             'previous_hash': previous_hash,
-            'snippet': snippet
+            'snippet': snippet,
+            'selectors': selectors
         }
 
     def _check_forum_thread(self, url: str, previous_state: Optional[Dict] = None) -> Dict:
