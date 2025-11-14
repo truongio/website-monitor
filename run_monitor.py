@@ -13,7 +13,7 @@ load_dotenv()
 async def send_page_notification(bot: Bot, chat_id: int, url: str, snippet: str):
     message = (
         f"🔔 *Page Changed!*\n\n"
-        f"URL: `{url}`\n\n"
+        f"[View Page]({url})\n\n"
         f"Preview:\n{snippet[:300]}..."
     )
     try:
@@ -21,7 +21,7 @@ async def send_page_notification(bot: Bot, chat_id: int, url: str, snippet: str)
             chat_id=chat_id,
             text=message,
             parse_mode='Markdown',
-            disable_web_page_preview=True
+            disable_web_page_preview=False
         )
         print(f"Sent page notification to chat [{chat_id}] for [{url}]")
     except Exception as e:
