@@ -90,10 +90,22 @@ async def monitor_pages():
 
         previous_state = db.get_page_state(url)
 
-        if previous_state and 'selectors' not in previous_state and subs:
-            previous_state['selectors'] = subs[0].get('selectors')
+        selectors_override = next(
+            (sub.get('selectors') for sub in subs if sub.get('selectors')),
+            None
+        )
 
-        result = checker.check_page(url, previous_state)
+        if previous_state:
+            stored_selectors = previous_state.get('selectors')
+
+            if selectors_override:
+                previous_state['selectors'] = selectors_override
+            elif stored_selectors and not selectors_override:
+                previous_state.pop('selectors', None)
+        elif selectors_override:
+            previous_state = {'selectors': selectors_override}
+
+        result = checker.check_page(url, previous_state, selectors_override=selectors_override)
 
         if not result['success']:
             print(f"Failed to check [{url}]: {result.get('error')}")

@@ -1,5 +1,5 @@
 import requests
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from .content_cleaner import ContentCleaner
 from .url_classifier import URLClassifier
 from .forum_parser import ForumThreadParser
@@ -29,17 +29,19 @@ class PageChecker:
             print(f"Error fetching [{url}]: {e}")
             return None
 
-    def check_page(self, url: str, previous_state: Optional[Dict] = None) -> Dict:
+    def check_page(self, url: str, previous_state: Optional[Dict] = None,
+                   selectors_override: Optional[List[str]] = None) -> Dict:
         url_type = self.classifier.classify_url(url)
 
         if url_type == 'forum_thread':
             return self._check_forum_thread(url, previous_state)
         else:
-            return self._check_regular_page(url, previous_state)
+            return self._check_regular_page(url, previous_state, selectors_override)
 
-    def _check_regular_page(self, url: str, previous_state: Optional[Dict] = None) -> Dict:
+    def _check_regular_page(self, url: str, previous_state: Optional[Dict] = None,
+                            selectors_override: Optional[List[str]] = None) -> Dict:
         previous_hash = previous_state.get('content_hash') if previous_state else None
-        selectors = previous_state.get('selectors') if previous_state else None
+        selectors = selectors_override or (previous_state.get('selectors') if previous_state else None)
 
         html = self.fetch_page(url)
 

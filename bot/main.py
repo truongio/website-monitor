@@ -17,6 +17,7 @@ def run_bot():
     setup_handlers(application)
 
     print("Bot starting...")
+    print("Bot started! Listening for updates. Press Ctrl+C to stop.")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
